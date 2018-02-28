@@ -1,7 +1,7 @@
 #include "fbxproperty.h"
 #include "fbxutil.h"
 #include <functional>
-#include <zlib.h>
+#include <miniz.h>
 
 using std::cout;
 using std::endl;
@@ -89,7 +89,7 @@ FBXProperty::FBXProperty(std::ifstream &input)
     } else {
         uint32_t arrayLength = reader.readUint32(); // number of elements in array
         uint32_t encoding = reader.readUint32(); // 0 .. uncompressed, 1 .. zlib-compressed
-        uint32_t compressedLength = reader.readUint32();
+        const uint32_t compressedLength = reader.readUint32();
         if(encoding) {
             uint64_t uncompressedLength = arrayElementSize(type - ('a'-'A')) * arrayLength;
 
@@ -97,12 +97,24 @@ FBXProperty::FBXProperty(std::ifstream &input)
             if(decompressedBuffer == NULL) throw std::string("Malloc failed");
             BufferAutoFree baf(decompressedBuffer);
 
-            uint8_t compressedBuffer[compressedLength];
+            uint8_t *compressedBuffer = new uint8_t[compressedLength];
             reader.read((char*)compressedBuffer, compressedLength);
 
             uint64_t destLen = uncompressedLength;
             uint64_t srcLen = compressedLength;
-            uncompress2(decompressedBuffer, &destLen, compressedBuffer, &srcLen);
+			// uncompress2
+
+			mz_ulong mz_destLen = destLen;
+			mz_ulong mz_srcLen = srcLen;
+
+			uncompress(decompressedBuffer, &mz_destLen, compressedBuffer, mz_srcLen);
+			destLen = mz_destLen;
+
+			if (nullptr != compressedBuffer)
+			{
+				delete[] compressedBuffer;
+				compressedBuffer = nullptr;
+			}
 
             if(srcLen != compressedLength) throw std::string("compressedLength does not match data");
             if(destLen != uncompressedLength) throw std::string("uncompressedLength does not match data");
@@ -173,35 +185,38 @@ FBXProperty::FBXProperty(float a) { type = 'F'; value.f32 = a; }
 FBXProperty::FBXProperty(double a) { type = 'D'; value.f64 = a; }
 FBXProperty::FBXProperty(int64_t a) { type = 'L'; value.i64 = a; }
 // arrays
-FBXProperty::FBXProperty(const std::vector<bool> a) : type('b'), values(a.size()) {
+FBXProperty::FBXProperty(const std::vector<bool> &a) : type('b'), values(a.size()) {
     for(auto el : a) {
         FBXPropertyValue v;
         v.boolean = el;
         values.push_back(v);
     }
 }
-FBXProperty::FBXProperty(const std::vector<int32_t> a) : type('i'), values(a.size()) {
+FBXProperty::FBXProperty(const std::vector<int32_t> &a) : type('i'), values(a.size()) {
     for(auto el : a) {
         FBXPropertyValue v;
         v.i32 = el;
         values.push_back(v);
     }
 }
-FBXProperty::FBXProperty(const std::vector<float> a) : type('f'), values(a.size()) {
+FBXProperty::FBXProperty(const std::vector<float> &a) : type('f'), values(a.size()) {
     for(auto el : a) {
         FBXPropertyValue v;
         v.f32 = el;
         values.push_back(v);
     }
 }
-FBXProperty::FBXProperty(const std::vector<double> a) : type('d'), values(a.size()) {
+FBXProperty::FBXProperty(const std::vector<double> &a) : type('d'), values(a.size()) {
     for(auto el : a) {
         FBXPropertyValue v;
         v.f64 = el;
         values.push_back(v);
     }
 }
-FBXProperty::FBXProperty(const std::vector<int64_t> a) : type('l'), values(a.size()) {
+FBXProperty::FBXProperty(const std::vector<int64_t> &a) 
+	: type('l'), 
+	values(a.size()) 
+{
     for(auto el : a) {
         FBXPropertyValue v;
         v.i64 = el;
@@ -209,14 +224,16 @@ FBXProperty::FBXProperty(const std::vector<int64_t> a) : type('l'), values(a.siz
     }
 }
 // raw / string
-FBXProperty::FBXProperty(const std::vector<uint8_t> a, uint8_t type): raw(a) {
+FBXProperty::FBXProperty(const std::vector<uint8_t> &a, uint8_t type)
+	: raw(a) 
+{
     if(type != 'R' && type != 'S') {
         throw std::string("Bad argument to FBXProperty constructor");
     }
     this->type = type;
 }
 // string
-FBXProperty::FBXProperty(const std::string a){
+FBXProperty::FBXProperty(const std::string &a){
     for(uint8_t v : a) {
         raw.push_back(v);
     }

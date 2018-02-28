@@ -32,14 +32,14 @@ public:
     FBXProperty(double);
     FBXProperty(int64_t);
     // arrays
-    FBXProperty(const std::vector<bool>);
-    FBXProperty(const std::vector<int32_t>);
-    FBXProperty(const std::vector<float>);
-    FBXProperty(const std::vector<double>);
-    FBXProperty(const std::vector<int64_t>);
+    FBXProperty(const std::vector<bool>&);
+    FBXProperty(const std::vector<int32_t>&);
+    FBXProperty(const std::vector<float>&);
+    FBXProperty(const std::vector<double>&);
+    FBXProperty(const std::vector<int64_t>&);
     // raw / string
-    FBXProperty(const std::vector<uint8_t>, uint8_t type);
-    FBXProperty(const std::string);
+    FBXProperty(const std::vector<uint8_t>&, uint8_t type);
+    FBXProperty(const std::string&);
     FBXProperty(const char *);
 
     void write(std::ofstream &output);

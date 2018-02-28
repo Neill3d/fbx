@@ -19,11 +19,17 @@ int main(int argc, char** argv)
         std::cout << "Reading " << argv[1] << std::endl;
         doc.read(argv[1]);
 
+		//doc.read("test.fbx");
+
         //doc.print();
+		//doc.createBasicStructure();
+
+		//doc.nodes.push_back(FBXNode());
+
         std::cout << "Writing test.fbx" << std::endl;
         doc.write("test.fbx");
     } catch(std::string e) {
-        std::cout << e << std::endl;
+        std::cout << e.c_str() << std::endl;
         return 2;
     }
 

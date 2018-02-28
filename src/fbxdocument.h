@@ -16,7 +16,8 @@ public:
 
     void createBasicStructure();
 
-    std::vector<FBXNode> nodes;
+	FBXNode			root;
+    //std::vector<FBXNode> nodes;
 
     std::uint32_t getVersion();
     void print();

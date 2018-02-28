@@ -20,7 +20,7 @@ void FBXDocument::read(string fname)
     ifstream file;
 
     // buffer
-    int bufferSize = 1 << 16;
+    const int bufferSize = 1 << 16;
     char buffer[bufferSize];
     file.rdbuf()->pubsetbuf(buffer, bufferSize);
 
@@ -38,7 +38,7 @@ void FBXDocument::write(string fname)
     ofstream file;
 
     // buffer
-    int bufferSize = 1 << 16;
+    const int bufferSize = 1 << 16;
     char buffer[bufferSize];
     file.rdbuf()->pubsetbuf(buffer, bufferSize);
 
@@ -71,16 +71,16 @@ void FBXDocument::read(std::ifstream &input)
 
     uint32_t version = reader.readUint32();
 
-    uint32_t maxVersion = 7400;
+    uint32_t maxVersion = 7500;
     if(version > maxVersion) throw "Unsupported FBX version "+std::to_string(version)
                             + " latest supported version is "+std::to_string(maxVersion);
-
-    uint32_t start_offset = 27; // magic: 21+2, version: 4
+	
+    uint64_t start_offset = 27; // magic: 21+2, version: 4
     do{
         FBXNode node;
-        start_offset += node.read(input, start_offset);
+        start_offset += node.read(input, start_offset, version);
         if(node.isNull()) break;
-        nodes.push_back(node);
+        root.addChild(node);
     } while(true);
 }
 
@@ -117,20 +117,28 @@ void FBXDocument::write(std::ofstream &output)
     writer.write(version);
 
     uint32_t offset = 27; // magic: 21+2, version: 4
+
+	root.write_children(output, offset, false);
+	/*
     for(FBXNode node : nodes) {
         offset += node.write(output, offset);
     }
+	*/
+	/*
     FBXNode nullNode;
-    offset += nullNode.write(output, offset);
+    offset += nullNode.write(output, offset, false);
+	*/
     writerFooter(writer);
 }
 
 void FBXDocument::createBasicStructure()
 {
     FBXNode headerExtension("FBXHeaderExtension");
+	
     headerExtension.addPropertyNode("FBXHeaderVersion", (int32_t) 1003);
     headerExtension.addPropertyNode("FBXVersion", (int32_t) getVersion());
     headerExtension.addPropertyNode("EncryptionType", (int32_t) 0);
+
     {
         FBXNode creationTimeStamp("CreationTimeStamp");
         creationTimeStamp.addPropertyNode("Version", (int32_t) 1000);
@@ -145,6 +153,7 @@ void FBXDocument::createBasicStructure()
     }
     headerExtension.addPropertyNode("Creator", "Blender (stable FBX IO) - 2.78 (sub 0) - 3.7.7");
     {
+		
         FBXNode sceneInfo("SceneInfo");
         sceneInfo.addProperty(std::vector<uint8_t>({'G','l','o','b','a','l','I','n','f','o',0,1,'S','c','e','n','e','I','n','f','o'}), 'S');
         sceneInfo.addProperty("UserData");
@@ -163,6 +172,7 @@ void FBXDocument::createBasicStructure()
         }
         {
             FBXNode properties("Properties70");
+			
             {
                 FBXNode p("P");
                 p.addProperty("DocumentUrl");
@@ -269,11 +279,13 @@ void FBXDocument::createBasicStructure()
                 p.addProperty("01/01/1970 00:00:00.000");
                 properties.addChild(p);
             }
+			
             sceneInfo.addChild(properties);
         }
         headerExtension.addChild(sceneInfo);
+		
     }
-    nodes.push_back(headerExtension);
+    root.addChild(headerExtension);
 
 
 }
@@ -289,11 +301,9 @@ void FBXDocument::print()
     cout << "  \"version\": " << getVersion() << ",\n";
     cout << "  \"children\": [\n";
     bool hasPrev = false;
-    for(auto node : nodes) {
-        if(hasPrev) cout << ",\n";
-        node.print("    ");
-        hasPrev = true;
-    }
+
+	root.print("  ");
+
     cout << "\n  ]\n}" << endl;
 }
 

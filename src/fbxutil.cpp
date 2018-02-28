@@ -99,10 +99,17 @@ uint64_t Reader::readUint64()
 
 std::string Reader::readString(uint32_t length)
 {
-    char buffer[length + 1];
+    char *buffer = new char[length + 1];
     buffer[length] = 0;
     if(length) read(buffer, length);
-    return std::string(buffer);
+
+	std::string str(buffer);
+	if (buffer)
+	{
+		delete[] buffer;
+		buffer = nullptr;
+	}
+    return str;
 }
 
 float Reader::readFloat()
@@ -236,7 +243,7 @@ void Writer::write(std::int64_t _a)
     putc(a >> 56);
 }
 
-void Writer::write(std::string a)
+void Writer::write(const std::string &a)
 {
     for(char c : a) {
         putc(c);
@@ -269,6 +276,12 @@ void Writer::write(double a)
             putc(c[i]);
         }
     }
+}
+
+void Writer::writeBlockSentinelData()
+{
+	for (int i = 0; i < 13; ++i)
+		putc('\0');
 }
 
 } // namespace fbx

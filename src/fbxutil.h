@@ -48,9 +48,10 @@ namespace fbx {
         void write(std::int32_t);
         void write(std::uint64_t);
         void write(std::int64_t);
-        void write(std::string);
+        void write(const std::string&);
         void write(float);
         void write(double);
+		void writeBlockSentinelData();
     private:
         void putc(uint8_t);
         std::ofstream *ofstream;
