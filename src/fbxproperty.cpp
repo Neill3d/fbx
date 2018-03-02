@@ -79,11 +79,15 @@ FBXProperty::FBXProperty(std::ifstream &input)
     type = reader.readUint8();
     // std::cout << "  " << type << "\n";
     if(type == 'S' || type == 'R') {
-        uint32_t length = reader.readUint32();
-        for(uint32_t i = 0; i < length; i++){
-            uint8_t v = reader.readUint8();
-            raw.push_back(v);
-        }
+        
+		uint32_t length = reader.readUint32();
+		raw.resize(length);
+
+		for (auto iter = begin(raw); iter != end(raw); ++iter)
+		{
+			*iter = reader.readUint8();
+		}
+
     } else if(type < 'Z') { // primitive types
         value = readPrimitiveValue(reader, type);
     } else {
@@ -93,7 +97,7 @@ FBXProperty::FBXProperty(std::ifstream &input)
         if(encoding) {
             uint64_t uncompressedLength = arrayElementSize(type - ('a'-'A')) * arrayLength;
 
-            uint8_t *decompressedBuffer = (uint8_t*) malloc(uncompressedLength);
+            uint8_t *decompressedBuffer = (uint8_t*) malloc( (size_t) uncompressedLength);
             if(decompressedBuffer == NULL) throw std::string("Malloc failed");
             BufferAutoFree baf(decompressedBuffer);
 
@@ -104,8 +108,8 @@ FBXProperty::FBXProperty(std::ifstream &input)
             uint64_t srcLen = compressedLength;
 			// uncompress2
 
-			mz_ulong mz_destLen = destLen;
-			mz_ulong mz_srcLen = srcLen;
+			mz_ulong mz_destLen = (mz_ulong) destLen;
+			mz_ulong mz_srcLen = (mz_ulong) srcLen;
 
 			uncompress(decompressedBuffer, &mz_destLen, compressedBuffer, mz_srcLen);
 			destLen = mz_destLen;
@@ -125,9 +129,13 @@ FBXProperty::FBXProperty(std::ifstream &input)
                 values.push_back(readPrimitiveValue(r, type - ('a'-'A')));
             }
         } else {
-            for(uint32_t i = 0; i < arrayLength; i++) {
-                values.push_back(readPrimitiveValue(reader, type - ('a'-'A')));
-            }
+
+			values.resize(arrayLength);
+
+			for (auto iter = begin(values); iter != end(values); ++iter)
+			{
+				*iter = readPrimitiveValue(reader, type - ('a' - 'A'));
+			}
         }
     }
 }
@@ -150,11 +158,13 @@ void FBXProperty::write(std::ofstream &output)
     } else if(type == 'L') {
         writer.write(value.i64);
     } else if(type == 'R' || type == 'S') {
-        writer.write((uint32_t)raw.size());
-        for(char c : raw) {
-            writer.write((uint8_t)c);
-        }
+        
+		writer.write((uint32_t)raw.size());
+		for (size_t i = 0, count = raw.size(); i < count; ++i)
+			writer.write((uint8_t)raw[i]);
+   
     } else {
+
         writer.write((uint32_t) values.size()); // arrayLength
         writer.write((uint32_t) 0); // encoding // TODO: support compression
         uint32_t compressedLength = 0;
@@ -166,7 +176,7 @@ void FBXProperty::write(std::ofstream &output)
         else throw std::string("Invalid property");
         writer.write(compressedLength);
 
-        for(auto e : values) {
+        for(auto &e : values) {
             if(type == 'f') writer.write(e.f32);
             else if(type == 'd') writer.write(e.f64);
             else if(type == 'l') writer.write((int64_t)(e.i64));
@@ -181,6 +191,7 @@ void FBXProperty::write(std::ofstream &output)
 FBXProperty::FBXProperty(int16_t a) { type = 'Y'; value.i16 = a; }
 FBXProperty::FBXProperty(bool a) { type = 'C'; value.boolean = a; }
 FBXProperty::FBXProperty(int32_t a) { type = 'I'; value.i32 = a; }
+FBXProperty::FBXProperty(uint32_t a) { type = 'L'; value.i64 = a; }
 FBXProperty::FBXProperty(float a) { type = 'F'; value.f32 = a; }
 FBXProperty::FBXProperty(double a) { type = 'D'; value.f64 = a; }
 FBXProperty::FBXProperty(int64_t a) { type = 'L'; value.i64 = a; }
@@ -262,7 +273,7 @@ char FBXProperty::getType()
     return type;
 }
 
-string FBXProperty::to_string()
+string FBXProperty::to_string() const
 {
     if(type == 'Y') return std::to_string(value.i16);
     else if(type == 'C') return value.boolean ? "true" : "false";
@@ -301,7 +312,57 @@ string FBXProperty::to_string()
     throw std::string("Invalid property");
 }
 
-uint32_t FBXProperty::getBytes()
+string FBXProperty::to_ascii(uint32_t tab_offset) const
+{
+	if (type == 'Y') return std::to_string(value.i16);
+	else if (type == 'C') return value.boolean ? "1" : "0";
+	else if (type == 'I') return std::to_string(value.i32);
+	else if (type == 'F') return std::to_string(value.f32);
+	else if (type == 'D') return std::to_string(value.f64);
+	else if (type == 'L') return std::to_string(value.i64);
+	else if (type == 'R') {
+		string s("\"");
+		for (char c : raw) {
+			s += std::to_string(c) + " ";
+		}
+		return s + "\"";
+	}
+	else if (type == 'S') {
+		string s("\"");
+		for (uint8_t c : raw) {
+			if (c == '\\') s += "\\\\";
+			else if (c >= 32 && c <= 126) s += c;
+			else s = s + "\\u00" + base16Number(c);
+		}
+		return s + "\"";
+	}
+	else {
+		string s("*");
+		s += std::to_string(values.size());
+		s += " {\n";
+		for (uint32_t i = 0; i < tab_offset; ++i)
+			s += '\t';
+		s += "\ta: ";
+		bool hasPrev = false;
+		for (auto e : values) {
+			if (hasPrev) s += ",";
+			if (type == 'f') s += std::to_string(e.f32);
+			else if (type == 'd') s += std::to_string(e.f64);
+			else if (type == 'l') s += std::to_string(e.i64);
+			else if (type == 'i') s += std::to_string(e.i32);
+			else if (type == 'b') s += (e.boolean ? "1" : "0");
+			hasPrev = true;
+		}
+		s += '\n';
+		for (uint32_t i = 0; i < tab_offset; ++i)
+			s += '\t';
+		s += '}';
+		return s;
+	}
+	throw std::string("Invalid property");
+}
+
+uint32_t FBXProperty::getBytes() const
 {
     if(type == 'Y') return 2 + 1; // 2 for int16, 1 for type spec
     else if(type == 'C') return 1 + 1;

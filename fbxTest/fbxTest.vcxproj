@@ -81,6 +81,8 @@
     <ClCompile Include="..\src\fbxdump.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\src\fbxexporter.cpp" />
+    <ClCompile Include="..\src\fbximporter.cpp" />
     <ClCompile Include="..\src\fbxnode.cpp" />
     <ClCompile Include="..\src\fbxproperty.cpp" />
     <ClCompile Include="..\src\fbxutil.cpp" />
@@ -91,6 +93,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\fbxdocument.h" />
+    <ClInclude Include="..\src\fbxexporter.h" />
+    <ClInclude Include="..\src\fbximporter.h" />
     <ClInclude Include="..\src\fbxnode.h" />
     <ClInclude Include="..\src\fbxproperty.h" />
     <ClInclude Include="..\src\fbxutil.h" />

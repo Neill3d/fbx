@@ -36,6 +36,12 @@
     <ClCompile Include="..\src\miniz.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\fbxexporter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\fbximporter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\fbxdocument.h">
@@ -51,6 +57,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\miniz.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fbxexporter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fbximporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

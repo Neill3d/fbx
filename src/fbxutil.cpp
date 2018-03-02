@@ -171,7 +171,10 @@ void Reader::read(char *s, uint32_t n)
     }
 }
 
-Writer::Writer(std::ofstream *output):ofstream(output){}
+Writer::Writer(std::ofstream *output)
+	:ofstream(output)
+{
+}
 
 void Writer::putc(uint8_t c)
 {

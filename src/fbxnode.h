@@ -11,16 +11,17 @@ class FBXNode
 public:
     FBXNode();
     FBXNode(const char *name);
+	FBXNode(const char *name, const FBXProperty &p);
 
     std::uint64_t read(std::ifstream &input, uint64_t start_offset, uint16_t version);
-    std::uint32_t write(std::ofstream &output, uint32_t start_offset, bool is_last);
-	std::uint32_t write_children(std::ofstream &output, uint32_t start_offset, bool is_last);
+    
     void print(std::string prefix="");
     bool isNull();
 
     void addProperty(int16_t);
     void addProperty(bool);
     void addProperty(int32_t);
+	void addProperty(uint32_t);
     void addProperty(float);
     void addProperty(double);
     void addProperty(int64_t);
@@ -49,13 +50,33 @@ public:
 	void addPropertyNode(const char *name, const std::string&);
 	void addPropertyNode(const char *name, const char*);
 
-    void addChild(FBXNode &child);
-    uint32_t getBytes(bool is_last);
-	uint32_t getBytesChildren(bool is_last);
-	uint32_t getBytesProperties();
+	void addP70int(const char *name, int32_t value);
+	void addP70bool(const char *name, bool value);
+	void addP70double(const char *name, double value);
+	void addP70numberA(const char *name, double value);
+	void addP70color(const char *name, double r, double g, double b);
+	void addP70colorA(const char *name, double r, double g, double b);
+	void addP70vector(const char *name, double r, double g, double b);
+	void addP70vectorA(const char *name, double r, double g, double b);
+	void addP70enum(const char *name, int32_t value);
+	void addP70time(const char *name, int64_t value);
+	void addP70string(const char *name, const std::string &value);
+	void addP70Compound(const char *name, const char *type, const char *str1, const char *str2);
 
-    const std::vector<FBXNode> &getChildren();
+    void addChild(FBXNode &child);
+
+	const size_t getChildrenCount() const {
+		return children.size();
+	}
+	const size_t getPropertiesCount() const {
+		return properties.size();
+	}
+    const std::vector<FBXNode> &getChildren() const;
+	const std::vector<FBXProperty> &getProperties() const;
     const std::string &getName();
+	const char *getNamePtr() const {
+		return name.c_str();
+	}
 
 	void removeProperties(bool recursive);
 private:

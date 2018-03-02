@@ -9,21 +9,37 @@ class FBXDocument
 {
 public:
     FBXDocument();
-    void read(std::ifstream &input);
-    void read(std::string fname);
-    void write(std::string fname);
-    void write(std::ofstream &output);
+    
+	// create some basic document nodes
+    void createHeader();
+	void createGlobalSettings();
+	void createDocuments();
+	void createReferences();
+	void createDefinitions();
 
-    void createBasicStructure();
+	FBXNode		*findNode(const char *name, const FBXNode *parent);
 
-	FBXNode			root;
+	FBXNode		&getRoot() const
+	{
+		return (FBXNode&) root;
+	}
+	FBXNode		*getRootPtr() const
+	{
+		return (FBXNode*) &root;
+	}
+
     //std::vector<FBXNode> nodes;
 
-    std::uint32_t getVersion();
+    std::uint32_t getVersion() const;
     void print();
 
-private:
+	int64_t generate_uid() { return ++last_uid; }
+
+protected:
     std::uint32_t version;
+	int64_t last_uid;
+
+	FBXNode			root;
 };
 
 } // namespace fbx

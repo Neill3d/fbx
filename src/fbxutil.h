@@ -9,6 +9,14 @@
 #include <vector>
 
 namespace fbx {
+
+	// "Constants"
+#define 	FBX_VERSION				7400
+#define		FBX_HEADER_VERSION		1003
+#define		FBX_SCENEINFO_VERSION	100
+#define		FBX_TEMPLATES_VERSION	100
+
+
     // WARNING:
     // this assumes that float is 32bit and double is 64bit
     // both conforming to IEEE 754, it does not assume endianness
@@ -52,6 +60,13 @@ namespace fbx {
         void write(float);
         void write(double);
 		void writeBlockSentinelData();
+
+		fpos_t tell() {
+			if (ofstream)
+				return ofstream->tellp().seekpos();
+			return 0;
+		}
+
     private:
         void putc(uint8_t);
         std::ofstream *ofstream;

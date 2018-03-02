@@ -28,6 +28,7 @@ public:
     FBXProperty(int16_t);
     FBXProperty(bool);
     FBXProperty(int32_t);
+	FBXProperty(uint32_t);
     FBXProperty(float);
     FBXProperty(double);
     FBXProperty(int64_t);
@@ -44,11 +45,14 @@ public:
 
     void write(std::ofstream &output);
 
-    std::string to_string();
+	// json format
+    std::string to_string() const;
+	// fbx ascii format
+	std::string to_ascii(uint32_t tab_offset) const;
     char getType();
 
     bool is_array();
-    uint32_t getBytes();
+    uint32_t getBytes() const;
 private:
     uint8_t type;
     FBXPropertyValue value;

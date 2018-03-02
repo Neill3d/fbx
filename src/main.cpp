@@ -1,11 +1,12 @@
 #include <stdint.h>
 #include <iostream>
 
+#include "fbximporter.h"
+#include "fbxexporter.h"
 #include "fbxdocument.h"
 
 using std::cout;
 using std::endl;
-using namespace fbx;
 
 int main(int argc, char** argv)
 {
@@ -14,24 +15,26 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    try {
-        fbx::FBXDocument doc;
-        std::cout << "Reading " << argv[1] << std::endl;
-        doc.read(argv[1]);
+    
+    fbx::FBXDocument doc;
+    std::cout << "Reading " << argv[1] << std::endl;
 
-		//doc.read("test.fbx");
+	fbx::Importer lImporter;
+	bool lSuccess = lImporter.Initialize(argv[1]);
 
-        //doc.print();
-		//doc.createBasicStructure();
+	if (lSuccess)
+	{
+		lImporter.Import(doc);
 
-		//doc.nodes.push_back(FBXNode());
+		//
 
-        std::cout << "Writing test.fbx" << std::endl;
-        doc.write("test.fbx");
-    } catch(std::string e) {
-        std::cout << e.c_str() << std::endl;
-        return 2;
-    }
+		fbx::Exporter	lExporter;
+
+		std::cout << "Writing test.fbx" << std::endl;
+		lExporter.Initialize("test.fbx", false);
+
+		lExporter.Export(doc);
+	}
 
     return 0;
 }

@@ -1,6 +1,8 @@
 #include "fbxdocument.h"
 #include "fbxutil.h"
 
+#include <ctime>
+
 using std::string;
 using std::cout;
 using std::endl;
@@ -10,132 +12,18 @@ using std::uint32_t;
 using std::uint8_t;
 
 namespace fbx {
+
 FBXDocument::FBXDocument()
 {
     version = 7400;
+	last_uid = 999999;
 }
 
-void FBXDocument::read(string fname)
-{
-    ifstream file;
-
-    // buffer
-    const int bufferSize = 1 << 16;
-    char buffer[bufferSize];
-    file.rdbuf()->pubsetbuf(buffer, bufferSize);
-
-    file.open(fname, std::ios::in | std::ios::binary);
-    if (file.is_open()) {
-        read(file);
-    } else {
-        throw std::string("Cannot read from file: \"" + fname + "\"");
-    }
-    file.close();
-}
-
-void FBXDocument::write(string fname)
-{
-    ofstream file;
-
-    // buffer
-    const int bufferSize = 1 << 16;
-    char buffer[bufferSize];
-    file.rdbuf()->pubsetbuf(buffer, bufferSize);
-
-    file.open(fname, std::ios::out | std::ios::binary);
-    if (file.is_open()) {
-        write(file);
-    } else {
-        throw std::string("Cannot write to file: \"" + fname + "\"");
-    }
-    file.close();
-}
-
-bool checkMagic(Reader &reader)
-{
-    string magic("Kaydara FBX Binary  ");
-    for(char c : magic) {
-        if(reader.readUint8() != c) return false;
-    }
-    if(reader.readUint8() != 0x00) return false;
-    if(reader.readUint8() != 0x1A) return false;
-    if(reader.readUint8() != 0x00) return false;
-    return true;
-}
-
-void FBXDocument::read(std::ifstream &input)
-{
-    Reader reader(&input);
-    input >> std::noskipws;
-    if(!checkMagic(reader)) throw std::string("Not a FBX file");
-
-    uint32_t version = reader.readUint32();
-
-    uint32_t maxVersion = 7500;
-    if(version > maxVersion) throw "Unsupported FBX version "+std::to_string(version)
-                            + " latest supported version is "+std::to_string(maxVersion);
-	
-    uint64_t start_offset = 27; // magic: 21+2, version: 4
-    do{
-        FBXNode node;
-        start_offset += node.read(input, start_offset, version);
-        if(node.isNull()) break;
-        root.addChild(node);
-    } while(true);
-}
-
-namespace {
-    void writerFooter(Writer &writer) {
-        uint8_t footer[] = {
-            0xfa, 0xbc, 0xab, 0x09,
-            0xd0, 0xc8, 0xd4, 0x66, 0xb1, 0x76, 0xfb, 0x83, 0x1c, 0xf7, 0x26, 0x7e, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0xe8, 0x1c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x5a, 0x8c, 0x6a,
-            0xde, 0xf5, 0xd9, 0x7e, 0xec, 0xe9, 0x0c, 0xe3, 0x75, 0x8f, 0x29, 0x0b
-        };
-        for(unsigned int i = 0; i < sizeof(footer); i++) {
-            writer.write(footer[i]);
-        }
-    }
-
-}
-
-void FBXDocument::write(std::ofstream &output)
-{
-    Writer writer(&output);
-    writer.write("Kaydara FBX Binary  ");
-    writer.write((uint8_t) 0);
-    writer.write((uint8_t) 0x1A);
-    writer.write((uint8_t) 0);
-    writer.write(version);
-
-    uint32_t offset = 27; // magic: 21+2, version: 4
-
-	root.write_children(output, offset, false);
-	/*
-    for(FBXNode node : nodes) {
-        offset += node.write(output, offset);
-    }
-	*/
-	/*
-    FBXNode nullNode;
-    offset += nullNode.write(output, offset, false);
-	*/
-    writerFooter(writer);
-}
-
-void FBXDocument::createBasicStructure()
+void FBXDocument::createHeader()
 {
     FBXNode headerExtension("FBXHeaderExtension");
 	
-    headerExtension.addPropertyNode("FBXHeaderVersion", (int32_t) 1003);
+    headerExtension.addPropertyNode("FBXHeaderVersion", (int32_t) FBX_HEADER_VERSION);
     headerExtension.addPropertyNode("FBXVersion", (int32_t) getVersion());
     headerExtension.addPropertyNode("EncryptionType", (int32_t) 0);
 
@@ -151,17 +39,17 @@ void FBXDocument::createBasicStructure()
         creationTimeStamp.addPropertyNode("Millisecond", (int32_t) 917);
         headerExtension.addChild(creationTimeStamp);
     }
-    headerExtension.addPropertyNode("Creator", "Blender (stable FBX IO) - 2.78 (sub 0) - 3.7.7");
+	const char *creator = "FBX <Neill3d> Exporter (Beta)";
+    headerExtension.addPropertyNode("Creator", creator);
     {
-		
         FBXNode sceneInfo("SceneInfo");
         sceneInfo.addProperty(std::vector<uint8_t>({'G','l','o','b','a','l','I','n','f','o',0,1,'S','c','e','n','e','I','n','f','o'}), 'S');
         sceneInfo.addProperty("UserData");
         sceneInfo.addPropertyNode("Type", "UserData");
-        sceneInfo.addPropertyNode("Version", 100);
-        {
+        sceneInfo.addPropertyNode("Version", (int32_t) FBX_SCENEINFO_VERSION);
+		{
             FBXNode metadata("MetaData");
-            metadata.addPropertyNode("Version", 100);
+			metadata.addPropertyNode("Version", (int32_t) FBX_SCENEINFO_VERSION);
             metadata.addPropertyNode("Title", "");
             metadata.addPropertyNode("Subject", "");
             metadata.addPropertyNode("Author", "");
@@ -287,10 +175,139 @@ void FBXDocument::createBasicStructure()
     }
     root.addChild(headerExtension);
 
+	// FINISH with the header extension
 
+	//
+	// fileId
+
+	const char *GENERIC_CTIME = "1970-01-01 10:00:00:000";
+	std::string GENERIC_FILEID("\x28\xb3\x2a\xeb\xb6\x24\xcc\xc2\xbf\xc8\xb0\x2a\xa9\x2b\xfc\xf1");
+	
+	std::vector<uint8_t> raw(GENERIC_FILEID.size());
+	for (size_t i = 0; i < GENERIC_FILEID.size(); ++i) {
+		raw[i] = uint8_t(GENERIC_FILEID[i]);
+	}
+
+	root.addPropertyNode("FileId", raw, 'R');
+	//root.addPropertyNode("FileId", std::vector<uint8_t> ({'F', 'o', 'o', 'B', 'a', 'r'}), 'R');
+
+	//
+	// creationTime is replaced by dymmy value currently...
+	/*
+	char buffer[256] = { 0 };
+	
+	time_t     now = time(0);
+	struct tm  tstruct;
+	localtime_s(&tstruct, &now);
+	// Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
+	// for more information about date/time format
+	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S:306", &tstruct);
+	*/
+
+	root.addPropertyNode("CreationTime", GENERIC_CTIME);
+	root.addPropertyNode("Creator", creator);
 }
 
-std::uint32_t FBXDocument::getVersion()
+
+void FBXDocument::createGlobalSettings()
+{
+	FBXNode global_settings("GlobalSettings");
+	global_settings.addPropertyNode("Version", 1000);
+
+	FBXNode properties("Properties70");
+
+	properties.addP70int("UpAxis", 2);
+	properties.addP70int("UpAxisSign", 1);
+	properties.addP70int("FrontAxis", 2);
+	properties.addP70int("FrontAxisSign", 1);
+	properties.addP70int("CoordAxis", 0);
+	properties.addP70int("CoordAxisSign", 1);
+	properties.addP70int("OriginUpAxis", -1);
+	properties.addP70int("OriginUpAxisSign", 1);
+	properties.addP70double("UnitScaleFactor", 1.0);
+	properties.addP70double("OriginalUnitScaleFactor", 1.0);
+	properties.addP70color("AmbientColor", 0.4, 0.4, 0.4);
+	properties.addP70string("DefaultCamera", "Producer Perspective");
+	properties.addP70enum("TimeMode", 6);
+	properties.addP70enum("TimeProtocol", 0);
+	properties.addP70enum("SnapOnFrameMode", 0);
+	properties.addP70time("TimeSpanStart", 0);
+	properties.addP70time("TimeSpanStop", 230930790000);
+	properties.addP70double("CustomFrameRate", -1.0);
+	properties.addP70Compound("TimeMarker", "Compound", "", "");
+	properties.addP70int("CurrentTimeMarker", -1);
+
+	global_settings.addChild(properties);
+
+	root.addChild(global_settings);
+}
+
+void FBXDocument::createDocuments()
+{
+	FBXNode docs("Documents");
+	docs.addPropertyNode("Count", int32_t(1));
+
+	FBXNode doc("Document");
+
+	// generate uid
+	int64_t uid = generate_uid();
+	doc.addProperty(uid);
+	doc.addProperty("");
+	doc.addProperty("Scene");
+	FBXNode p("Properties70");
+	p.addP70Compound("SourceObject", "object", "", "");
+	p.addP70string("ActiveAnimStackName", "");
+	doc.addChild(p);
+
+	// UID for root node in scene heirarchy.
+	// always set to 0 in the case of a single document.
+	// not sure what happens if more than one document exists,
+	// but that won't matter to us as we're exporting a single scene.
+	doc.addPropertyNode("RootNode", int64_t(0));
+
+	docs.addChild(doc);
+	root.addChild(docs);
+}
+
+void FBXDocument::createReferences()
+{
+	// empty for now
+	FBXNode n("References");
+	root.addChild(n);
+}
+
+void FBXDocument::createDefinitions()
+{
+	// basically this is just bookkeeping:
+	// determining how many of each type of object there are
+	// and specifying the base properties to use when otherwise unspecified.
+
+	// we need to count the objects
+	int32_t count;
+	int32_t total_count = 0;
+
+	// and store them
+	std::vector<FBXNode> object_nodes;
+	FBXNode n, pt, p;
+
+	// GlobalSettings
+	// this seems to always be here in Maya exports
+	n = FBXNode("ObjectType", FBXProperty("GlobalSettings"));
+	count = 1;
+	n.addPropertyNode("Count", count);
+	object_nodes.push_back(n);
+	total_count += count;
+
+	// now write it all
+	FBXNode defs("Definitions");
+	defs.addPropertyNode("Version", int32_t(100));
+	defs.addPropertyNode("Count", int32_t(total_count));
+	for (auto &n : object_nodes) { defs.addChild(n); }
+	
+	root.addChild(defs);
+}
+
+std::uint32_t FBXDocument::getVersion() const
 {
     return version;
 }
@@ -305,6 +322,32 @@ void FBXDocument::print()
 	root.print("  ");
 
     cout << "\n  ]\n}" << endl;
+}
+
+FBXNode *FBXDocument::findNode(const char *name, const FBXNode *pParent)
+{
+	const FBXNode *lParent = (nullptr == pParent) ? &root : pParent;
+	FBXNode *lResult = nullptr;
+
+	auto &children = lParent->getChildren();
+
+	for (auto iter = begin(children); iter != end(children); ++iter)
+	{
+		lResult = findNode(name, &(*iter));
+
+		if (nullptr != lResult)
+			break;
+	}
+
+	if (nullptr == lResult)
+	{
+		if (0 == strcmp(lParent->getNamePtr(), name))
+		{
+			lResult = (FBXNode*) lParent;
+		}
+	}
+
+	return lResult;
 }
 
 } // namespace fbx
