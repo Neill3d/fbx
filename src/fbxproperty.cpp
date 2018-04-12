@@ -1,7 +1,7 @@
 #include "fbxproperty.h"
 #include "fbxutil.h"
 #include <functional>
-#include <miniz.h>
+#include "miniz.h"
 
 using std::cout;
 using std::endl;

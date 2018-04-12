@@ -46,8 +46,11 @@ bool Importer::Initialize(const char *filename)
 	mFile.open(filename, std::ios::in | std::ios::binary);
 	
 	if (false == mFile.is_open())
+	{
+		int err = errno;
+		printf("error - %d\n", err);
 		lSuccess = false;
-
+	}
 	return lSuccess;
 }
 
